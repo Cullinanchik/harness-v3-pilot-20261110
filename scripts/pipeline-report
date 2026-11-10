@@ -1,0 +1,5 @@
+#!/usr/bin/env python3
+import sys
+from dev_pipeline.__main__ import main
+sys.argv.insert(1, "report")
+raise SystemExit(main())

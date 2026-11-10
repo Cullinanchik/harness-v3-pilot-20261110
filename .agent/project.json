@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "quick_checks": [
+    {
+      "name": "syntax",
+      "argv": [
+        "python3",
+        "-m",
+        "py_compile",
+        "retry_policy.py"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 30
+    }
+  ],
+  "checks": [
+    {
+      "name": "pilot-tests",
+      "argv": [
+        "python3",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-v"
+      ],
+      "cwd": ".",
+      "timeout_seconds": 60
+    }
+  ]
+}
