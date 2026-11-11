@@ -1,6 +1,6 @@
 {
   "version": 1,
   "required": false,
-  "brief": "Чистая Python-функция и документация без UI; визуальный дизайн не требуется.",
+  "brief": "Изменяется чистая Python-функция, её unittest и README. Экранов и визуальных материалов нет; Claude Design export не требуется.",
   "reuse": []
 }
