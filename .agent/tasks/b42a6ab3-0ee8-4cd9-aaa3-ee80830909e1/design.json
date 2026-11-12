@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "required": false,
+  "brief": "Изменяется чистая Python-функция, её unittest и README. Экранов и визуальных материалов нет; Claude Design export не требуется.",
+  "reuse": []
+}

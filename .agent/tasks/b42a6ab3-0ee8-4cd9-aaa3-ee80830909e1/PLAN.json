@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "requirements": {
+    "R1": "Добавить next_delay(attempt, base_delay, max_delay, remaining): attempt — int >= 0 без bool; остальные аргументы — конечные int/float без bool; base_delay и max_delay > 0, remaining >= 0. Любые некорректные аргументы дают ValueError.",
+    "R2": "Возвращать min(max_delay, base_delay * 2**attempt), если задержка <= remaining; точное равенство допустимо; при remaining == 0 или превышении бюджета возвращать None.",
+    "R3": "Чистый детерминированный расчёт: attempt=10**9 обрабатывается быстро, без огромной степени, переполнения и зависания; без внешних зависимостей, ожиданий, сети, часов и случайности.",
+    "R4": "Добавить адресные unittest для нормальных случаев, границ, точного/исчерпанного бюджета, bool, отрицательных/нечисловых/NaN/inf аргументов и огромного attempt; описать контракт в README.",
+    "R5": "Сохранить constant_delay и поведение вне задачи относительно baseline 067c6b554b31cd8929bc58bd4402ab3fcd5d9aae. Продуктовые изменения ограничены retry_policy.py, tests/test_retry_policy.py, README.md."
+  },
+  "criteria": {
+    "AC1": {
+      "requirement": "R1",
+      "expected": "Матрица недопустимых значений по каждой позиции даёт ValueError, в том числе при remaining=0; большие конечные int принимаются без преобразования во float. Корректные значения на границе допускаются.",
+      "verification": "python3 -m unittest discover -s tests -p test_retry_policy.py -v"
+    },
+    "AC2": {
+      "requirement": "R2",
+      "expected": "Таблица S2 подтверждает экспоненциальный рост, cap (включая base_delay > max_delay), точный бюджет, бюджет ниже задержки и нулевой бюджет; результат сравнивается точно, без epsilon.",
+      "verification": "python3 -m unittest discover -s tests -p test_retry_policy.py -v"
+    },
+    "AC3": {
+      "requirement": "R3",
+      "expected": "Адресные тесты подтверждают огромные attempt, subnormal/max-float и большие int; subprocess с huge-attempt вызовами завершается за watchdog 5 секунд. Review подтверждает ограничение сдвигов размерами входных чисел, отсутствие степени/цикла по attempt и побочных эффектов.",
+      "verification": "python3 -m unittest discover -s tests -p test_retry_policy.py -v"
+    },
+    "AC4": {
+      "requirement": "R4",
+      "expected": "tests/test_retry_policy.py содержит матрицу S2 и тест повторяемости; README описывает все аргументы, ValueError, cap, равенство бюджета, None, примеры и адресную команду. Существующий Verify обнаруживает новые тесты.",
+      "verification": "python3 -m unittest discover -s tests -p test_retry_policy.py -v"
+    },
+    "AC5": {
+      "requirement": "R5",
+      "expected": "quick проходит; diff к baseline сохраняет constant_delay и tests/test_baseline.py, все прочие продуктовые файлы неизменны. Review сверяет сохранённый полный Verify с HEAD.",
+      "verification": "scripts/agent-check --phase quick"
+    }
+  },
+  "decisions": [
+    "D1: Сначала валидировать все четыре аргумента; bool отклонять отдельно; math.isfinite применять только к float, поскольку Python int конечен и не ограничен float-диапазоном.",
+    "D2: Сравнивать точные положительные дроби int/float: int -> (x,1), float -> x.as_integer_ratio(). Для base B/b и cap M/m положить L=B*m, R=M*b. Сравнить L.bit_length()+attempt с R.bit_length(); сдвиг L<<attempt нужен только при равных длинах. Если результат >= cap, выбрать исходный max_delay.",
+    "D3: При ненасыщенном результате attempt уже ограничен размерами входа. Для base B/b, b=2**k и k=b.bit_length()-1: если attempt>=k, получить int B<<(attempt-k); иначе получить float B/(b>>attempt). Вторая ветвь точно представима и конечна. Сравнить candidate<=remaining напрямую; вернуть candidate или None. После полной валидации remaining==0 возвращает None.",
+    "D4: Возвращаемый числовой тип не фиксировать: равные int/float эквивалентны; целая задержка, превышающая float-диапазон, остаётся int. Не использовать округление, логарифмы, float-приведение int, 2**attempt или цикл длиной attempt.",
+    "D5: Новые тесты только в tests/test_retry_policy.py; существующую constant_delay и baseline-тест не переписывать. README дополнить контрактом без удаления вводного текста.",
+    "D6: Route standard; design.required=false; needs_uat=false. Проверки уже реальные, project_policy_change не требуется. Без пакетов, интеграций, миграций и изменений ADR.",
+    "D7: Сначала независимый Debate и согласование плана владельцем в Telegram; затем Work в Docker, отдельный Verify, Review, Security, независимая приёмка в Telegram и публикация/merge только контроллером."
+  ],
+  "risks": [
+    "Валидация через math.isfinite(int) ошибочно переполняется на больших int; ограничить проверку конечности float-веткой.",
+    "Логарифмы, float-деление cap/base и ранняя степень могут округлять границу или переполняться; использовать D2–D3 и крайние числовые случаи S2.",
+    "Watchdog 5 секунд — защита теста от зависания, не обещание производительности на любой машине; структурная проверка алгоритма также обязательна.",
+    "В CI используется python3 с ubuntu-latest без закреплённой версии; локально наблюдался Python 3.12.3. Не утверждать совместимость с непроверенными версиями; контроллер записывает версии в Verify/CI. Изменение CI запрещено.",
+    "План ещё не согласован; нельзя реализовывать его или публиковать результат до независимого решения владельца. При внешнем блокере остановиться без новых сессий/Fix/fallback."
+  ],
+  "steps": [
+    {
+      "id": "S1",
+      "files": [
+        "retry_policy.py"
+      ],
+      "change": "Сохранить constant_delay без изменений и добавить next_delay с полной валидацией D1, ранним remaining==0 после неё, точным ограничением D2, безопасным масштабированием и сравнением бюджета D3. Не добавлять зависимости или побочные эффекты.",
+      "criteria": [
+        "AC1",
+        "AC2",
+        "AC3",
+        "AC5"
+      ],
+      "depends_on": [],
+      "verification": "python3 -m py_compile retry_policy.py"
+    },
+    {
+      "id": "S2",
+      "files": [
+        "tests/test_retry_policy.py"
+      ],
+      "change": "Создать unittest по полной матрице S2 из PLAN.md: валидация каждой позиции, рост/cap/бюджет, крайние float и int, повторяемость, huge-attempt subprocess watchdog 5 секунд. Assertions числовые точные; не фиксировать тип равных int/float или тексты ошибок.",
+      "criteria": [
+        "AC1",
+        "AC2",
+        "AC3",
+        "AC4"
+      ],
+      "depends_on": [
+        "S1"
+      ],
+      "verification": "python3 -m unittest discover -s tests -p test_retry_policy.py -v"
+    },
+    {
+      "id": "S3",
+      "files": [
+        "README.md"
+      ],
+      "change": "Дополнить существующее введение контрактом R1–R3, примерами из S3, отсутствием ожидания и зависимостей, командой адресных unittest. Сверить scope и сохранение baseline. После commit выполнить quick и адресные тесты, затем handoff; полный suite запускает только контроллер.",
+      "criteria": [
+        "AC4",
+        "AC5"
+      ],
+      "depends_on": [
+        "S1",
+        "S2"
+      ],
+      "verification": "scripts/agent-check --phase quick"
+    }
+  ],
+  "needs_uat": false,
+  "uat_reason": "Изменяется только чистый Python API без экранов и пользовательского сценария; контракт проверяется unittest, отдельный UAT/dev-preview владельцем исключён."
+}

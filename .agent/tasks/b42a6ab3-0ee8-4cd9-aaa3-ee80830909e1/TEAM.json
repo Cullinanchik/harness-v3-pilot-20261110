@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "class": "standard",
+  "risk": "medium",
+  "confidence": "high",
+  "reason": "Новая числовая логика требует полного маршрута, а не механических замен. В retry_policy.py обнаружена только constant_delay; tests/test_baseline.py проверяет её текущее поведение; tests/test_retry_policy.py отсутствует, README.md содержит лишь вводное описание. Риск — некорректная валидация bool/NaN/inf и переполнение при больших attempt. Требования владельца: полный маршрут Triage → Spec → Debate → независимое согласование плана в Telegram → Work в Docker → отдельный Verify → Review → Security → независимая приёмка в Telegram → PR/CI/merge контроллером. Не нужны UI, UAT/dev-preview и миграции. Бюджет — одна техническая и пять ролевых native-сессий, без делегирования, Fix, повторов, fallback и напоминаний. Журнал owner_decisions пуст; согласований пока нет. Запрошены Sol medium для Triage, astra.xhigh для архитектора, OpenCode GO / DeepSeek для оппонента, deepseek для исполнителя и sonnet.medium для reviewer. request.role задаёт только Triager/profile_id, без названий моделей: соответствие слотов не подтверждено, подмена не выполняется. Источник требований: request.context.artifacts.BRIEF.md (.agent/runtime/b42a6ab3-0ee8-4cd9-aaa3-ee80830909e1/context/01c8a273d126ebca11a4e7eaec3faad15937e8621a2091f2b955297286b38b56.json).",
+  "paths": [
+    "retry_policy.py",
+    "tests/test_retry_policy.py",
+    "README.md"
+  ],
+  "criteria": {
+    "AC1": "attempt — int >= 0 без bool; base_delay/max_delay/remaining — конечные int/float без bool, base_delay и max_delay > 0, remaining >= 0; любые некорректные аргументы дают ValueError.",
+    "AC2": "Задержка min(max_delay, base_delay * 2**attempt) возвращается при delay <= remaining; при remaining == 0 или delay > remaining возвращается None.",
+    "AC3": "attempt=10**9 быстро возвращает ограниченный результат без огромной степени, переполнения и зависания; функция чистая, без внешних зависимостей, ожиданий, сети, часов и случайности.",
+    "AC4": "Адресные unittest покрывают нормальные случаи, границы, точный и исчерпанный бюджет, bool, отрицательные/нечисловые/NaN/inf аргументы и огромный attempt; README описывает контракт.",
+    "AC5": "Существующая constant_delay и поведение вне задачи сохранены относительно base 067c6b554b31cd8929bc58bd4402ab3fcd5d9aae; продуктовые изменения только retry_policy.py, tests/test_retry_policy.py, README.md."
+  },
+  "verification": [
+    "scripts/agent-check --phase quick",
+    "python3 -m unittest discover -s tests -p test_retry_policy.py -v",
+    "Контроллер Verify: python3 -m unittest discover -s tests -v"
+  ],
+  "needs_uat": false,
+  "members": [
+    {
+      "role": "planner",
+      "scope": "Уточнить числовой алгоритм, AC и PLAN.json для независимого согласования владельцем."
+    },
+    {
+      "role": "opponent",
+      "scope": "Проверить план, валидацию чисел и ограничение затрат при огромном attempt."
+    },
+    {
+      "role": "builder",
+      "scope": "После согласования реализовать контракт, адресные unittest и README в трёх разрешённых файлах; Work в Docker."
+    },
+    {
+      "role": "reviewer",
+      "scope": "Проверить diff и AC по сохранённым результатам отдельного Verify, включая сохранение baseline."
+    }
+  ]
+}
